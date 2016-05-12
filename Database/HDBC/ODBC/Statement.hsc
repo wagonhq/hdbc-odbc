@@ -185,6 +185,7 @@ fdescribetable iconn tablename = B.useAsCStringLen (BUTF8.fromString tablename) 
        l (show results)
        return $ map fromOTypeCol results
 
+-- Most of this is boilerplate copy-pasta from `fexecute`.
 fexecuteraw :: SState -> IO ()
 fexecuteraw sstate = do
   let query = squery sstate
@@ -207,7 +208,10 @@ fexecuteraw sstate = do
 
       l $ "Ready for sqlExecuteRaw: " ++ show (squery sstate)
 
-      -- Note that SQL_NO_DATA Indicates an update that did nothing.
+      {-
+          - This is the bit that differs significantly from `fexecute`.
+          - Note that SQL_NO_DATA Indicates an update that did nothing.
+      -}
       withCStringLen query $ \(cstr, nbytes) -> do
         sqlExecDirect sthptr cstr (fromIntegral nbytes) >>= \case
           #{const SQL_NO_DATA} -> return ()
@@ -219,12 +223,10 @@ fexecuteraw sstate = do
           ffinish fsthptr
           swapMVar (colinfomv sstate) []
           touchForeignPtr fsthptr
-          return ()
         colcount -> do
           fgetcolinfo sthptr >>= swapMVar (colinfomv sstate)
           swapMVar (stomv sstate) (Just fsthptr)
           touchForeignPtr fsthptr
-          return ()
 
 
 {- For now, we try to just  handle things as simply as possible.
